@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Budget</title>
+<meta name="description" content="A simple, private budget planner for college students. Your data never leaves your device.">
+<style>
+  /* ---------- Colors & basics (change these to re-theme the site) ---------- */
+  :root {
+    --bg: #f4f7fb;
+    --card: #ffffff;
+    --text: #1d2433;
+    --muted: #5d6779;
+    --line: #e3e8f0;
+    --brand: #4f46e5;
+    --brand-dark: #3d35c4;
+    --good: #0f8a5f;
+    --warn: #b45309;
+    --bad: #c62828;
+    --radius: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1420; --card: #181f2f; --text: #eef1f7; --muted: #a2adc2;
+      --line: #2a3349; --brand: #8b85ff; --brand-dark: #a6a1ff;
+      --good: #4fd1a1; --warn: #f5b25a; --bad: #ff8a80;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5; -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
+  header { text-align: center; padding: 20px 0 8px; }
+  header h1 { margin: 0; font-size: 1.9rem; letter-spacing: -0.5px; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+
+  .privacy {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--good);
+    border-radius: var(--radius); padding: 12px 14px; margin: 14px 0; font-size: .92rem;
+  }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px; margin: 16px 0; box-shadow: 0 1px 3px rgba(20,30,60,.05);
+  }
+  .card h2 { margin: 0 0 4px; font-size: 1.15rem; }
+  .hint { color: var(--muted); font-size: .9rem; margin: 0 0 12px; }
+
+  /* ---------- The big "safe to spend" card ---------- */
+  .hero { text-align: center; background: linear-gradient(135deg, var(--brand), #7c5cff); color: #fff; border: 0; }
+  .hero .label { opacity: .9; font-size: .95rem; }
+  .hero .big { font-size: 2.8rem; font-weight: 800; line-height: 1.1; margin: 6px 0; }
+  .hero .sub { opacity: .92; font-size: .92rem; }
+  .hero.warn { background: linear-gradient(135deg, #b45309, #d97706); }
+  .hero.bad  { background: linear-gradient(135deg, #b71c1c, #e53935); }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .stat { background: rgba(255,255,255,.16); border-radius: 12px; padding: 8px 4px; }
+  .stat b { display: block; font-size: 1.05rem; }
+  .stat span { font-size: .75rem; opacity: .9; }
+
+  .banner { background: #fff7e0; color: #5c4400; border: 1px solid #f0d78a; border-radius: var(--radius); padding: 12px 14px; margin: 16px 0; font-size: .92rem; }
+
+  /* ---------- Forms ---------- */
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  form .full { grid-column: 1 / -1; }
+  label.field { font-size: .8rem; color: var(--muted); display: block; margin-bottom: 2px; }
+  input, select, button { font: inherit; }
+  input, select {
+    width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); min-height: 46px;
+  }
+  input:focus, select:focus, button:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); outline-offset: 1px; }
+  .btn {
+    background: var(--brand); color: #fff; border: 0; border-radius: 12px; padding: 12px 16px;
+    font-weight: 700; cursor: pointer; min-height: 46px;
+  }
+  .btn:hover { background: var(--brand-dark); }
+  .btn.ghost { background: transparent; color: var(--bad); border: 1px solid var(--bad); }
+  .btn.ghost:hover { background: color-mix(in srgb, var(--bad) 12%, transparent); }
+
+  /* ---------- Lists ---------- */
+  ul.items { list-style: none; margin: 8px 0 0; padding: 0; }
+  ul.items li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+  ul.items .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  ul.items .name small { display: block; color: var(--muted); }
+  ul.items .amt { font-weight: 700; white-space: nowrap; }
+  .del { background: none; border: 0; color: var(--muted); font-size: 1.2rem; cursor: pointer; padding: 6px 10px; border-radius: 8px; min-height: 40px; }
+  .del:hover { color: var(--bad); background: var(--bg); }
+  .total { display: flex; justify-content: space-between; font-weight: 700; padding-top: 10px; border-top: 2px solid var(--line); margin-top: 4px; }
+  .empty { color: var(--muted); font-size: .92rem; padding: 8px 0 0; }
+
+  /* ---------- Chart ---------- */
+  .chart { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; justify-content: center; }
+  .donut { width: 160px; height: 160px; border-radius: 50%; position: relative; flex: none; }
+  .donut::after { content: ""; position: absolute; inset: 28px; background: var(--card); border-radius: 50%; }
+  .donut-mid { position: absolute; inset: 0; display: grid; place-items: center; z-index: 1; text-align: center; font-weight: 800; }
+  .donut-mid small { display: block; font-weight: 400; color: var(--muted); font-size: .72rem; }
+  .legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 180px; }
+  .legend li { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: .95rem; }
+  .legend i { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+  .legend span { flex: 1; }
+
+  footer { text-align: center; color: var(--muted); font-size: .85rem; margin-top: 28px; }
+  .danger-zone { text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>💸 Student Budget</h1>
+    <p>Know what you can spend today, without the stress.</p>
+  </header>
+
+  <div class="privacy" role="note">
+    <span aria-hidden="true">🔒</span>
+    <span><b>Your data stays on your device.</b> Everything you type is saved only in this browser on this device.
+    Nothing is sent to any server, and there are no accounts, ads, or tracking. (Clearing your browser data will erase it.)</span>
+  </div>
+
+  <div id="newMonthBanner" class="banner" hidden>
+    👋 Looks like a new month has started! Your old spending isn't counted anymore.
+    Tap <b>Reset month</b> at the bottom to tidy up.
+  </div>
+
+  <!-- Safe-to-spend summary -->
+  <section class="card hero" id="hero" aria-live="polite">
+    <div class="label">You can safely spend</div>
+    <div class="big" id="perDay">$0.00</div>
+    <div class="sub" id="heroMsg">per day for the rest of the month</div>
+    <div class="stats">
+      <div class="stat"><b id="sIncome">$0</b><span>Income</span></div>
+      <div class="stat"><b id="sFixed">$0</b><span>Fixed bills</span></div>
+      <div class="stat"><b id="sLeft">$0</b><span>Left to spend</span></div>
+    </div>
+  </section>
+
+  <!-- Income -->
+  <section class="card">
+    <h2>💰 Monthly income</h2>
+    <p class="hint">Money coming in each month: your job, financial aid, family help, anything else.</p>
+    <form id="incomeForm">
+      <div>
+        <label class="field" for="incType">Source</label>
+        <select id="incType">
+          <option>Job</option><option>Financial aid</option><option>Parents</option><option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="field" for="incAmt">Amount per month ($)</label>
+        <input id="incAmt" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="e.g. 800" required>
+      </div>
+      <button class="btn full" type="submit">Add income</button>
+    </form>
+    <ul class="items" id="incomeList"></ul>
+  </section>
+
+  <!-- Fixed expenses -->
+  <section class="card">
+    <h2>🏠 Fixed expenses</h2>
+    <p class="hint">Bills that are the same every month: rent, phone, subscriptions, etc.</p>
+    <form id="fixedForm">
+      <div>
+        <label class="field" for="fixName">What is it?</label>
+        <input id="fixName" list="fixSuggest" maxlength="40" placeholder="e.g. Rent" required>
+        <datalist id="fixSuggest">
+          <option value="Rent"><option value="Phone"><option value="Subscriptions">
+          <option value="Internet"><option value="Utilities"><option value="Insurance">
+          <option value="Car payment"><option value="Student loan">
+        </datalist>
+      </div>
+      <div>
+        <label class="field" for="fixAmt">Amount per month ($)</label>
+        <input id="fixAmt" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="e.g. 450" required>
+      </div>
+      <button class="btn full" type="submit">Add expense</button>
+    </form>
+    <ul class="items" id="fixedList"></ul>
+  </section>
+
+  <!-- Daily spending -->
+  <section class="card">
+    <h2>🛒 Log spending</h2>
+    <p class="hint">Bought a coffee? Log it here so your daily number stays accurate.</p>
+    <form id="spendForm">
+      <div>
+        <label class="field" for="spCat">Category</label>
+        <select id="spCat"></select>
+      </div>
+      <div>
+        <label class="field" for="spAmt">Amount ($)</label>
+        <input id="spAmt" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="e.g. 4.50" required>
+      </div>
+      <div>
+        <label class="field" for="spDate">Date</label>
+        <input id="spDate" type="date" required>
+      </div>
+      <div>
+        <label class="field" for="spNote">Note (optional)</label>
+        <input id="spNote" maxlength="40" placeholder="e.g. Latte">
+      </div>
+      <button class="btn full" type="submit">Add spending</button>
+    </form>
+    <ul class="items" id="spendList"></ul>
+  </section>
+
+  <!-- Chart -->
+  <section class="card">
+    <h2>📊 Where your money went</h2>
+    <p class="hint">Your spending this month, by category.</p>
+    <div id="chartArea"></div>
+  </section>
+
+  <section class="card danger-zone">
+    <h2>🔄 Start a new month</h2>
+    <p class="hint">Clears all logged spending. Your income and fixed expenses are kept.</p>
+    <button class="btn ghost" id="resetBtn" type="button">Reset month</button>
+  </section>
+
+  <footer>Made for students, by a student-friendly tool. 🎓<br>No data ever leaves your device.</footer>
+</div>
+
+<script>
+/* =========================================================
+   Student Budget: all the logic lives in this one script.
+   ========================================================= */
+
+// ---- 1. Settings ----
+const STORAGE_KEY = "studentBudget.v1";
+const CATEGORIES = [
+  { name: "Food",      color: "#e8590c" },
+  { name: "Transport", color: "#1c7ed6" },
+  { name: "Fun",       color: "#ae3ec9" },
+  { name: "Shopping",  color: "#d6336c" },
+  { name: "School",    color: "#2f9e44" },
+  { name: "Health",    color: "#0c8599" },
+  { name: "Other",     color: "#7a8599" }
+];
+
+// ---- 2. Saving and loading (localStorage) ----
+// "data" is the one object that holds everything the user typed.
+let data = load();
+
+function load() {
+  const fresh = { income: [], fixed: [], spending: [] };
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved && Array.isArray(saved.income) && Array.isArray(saved.fixed) && Array.isArray(saved.spending)) {
+      return saved;
+    }
+  } catch (e) { /* storage blocked or corrupted: start fresh */ }
+  return fresh;
+}
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+  catch (e) { alert("Couldn't save. Your browser may be blocking storage (private mode?)."); }
+}
+
+// ---- 3. Small helpers ----
+const $ = id => document.getElementById(id);
+const money = n => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+const sum = list => list.reduce((t, x) => t + x.amount, 0);
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const pad = n => String(n).padStart(2, "0");
+const dateStr = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const monthKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+
+// Build a list row safely (textContent means typed text can never run as code).
+function row(title, subtitle, amount, onDelete) {
+  const li = document.createElement("li");
+  const name = document.createElement("div");
+  name.className = "name";
+  name.textContent = title;
+  if (subtitle) {
+    const s = document.createElement("small");
+    s.textContent = subtitle;
+    name.appendChild(s);
+  }
+  const amt = document.createElement("div");
+  amt.className = "amt";
+  amt.textContent = money(amount);
+  const del = document.createElement("button");
+  del.className = "del";
+  del.type = "button";
+  del.textContent = "✕";
+  del.setAttribute("aria-label", "Delete " + title);
+  del.addEventListener("click", onDelete);
+  li.append(name, amt, del);
+  return li;
+}
+function fillList(ul, rows, emptyText) {
+  ul.replaceChildren(...rows);
+  if (!rows.length) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = emptyText;
+    ul.appendChild(li);
+  }
+}
+function totalRow(label, amount) {
+  const d = document.createElement("div");
+  d.className = "total";
+  d.innerHTML = "<span></span><span></span>";
+  d.children[0].textContent = label;
+  d.children[1].textContent = money(amount);
+  return d;
+}
+
+// ---- 4. The budget math ----
+function calculate() {
+  const now = new Date();
+  const thisMonth = monthKey(now);
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysLeft = daysInMonth - now.getDate() + 1;          // counts today
+
+  const monthSpending = data.spending.filter(s => s.date.startsWith(thisMonth));
+  const income = sum(data.income);
+  const fixed = sum(data.fixed);
+  const spent = sum(monthSpending);
+  const left = income - fixed - spent;                       // money still available this month
+  return { monthSpending, income, fixed, spent, left, daysLeft, perDay: left / daysLeft, thisMonth };
+}
+
+// ---- 5. Drawing the page ----
+function render() {
+  const c = calculate();
+
+  // Summary card
+  $("perDay").textContent = money(Math.max(c.perDay, 0));
+  $("sIncome").textContent = money(c.income);
+  $("sFixed").textContent = money(c.fixed);
+  $("sLeft").textContent = money(c.left);
+  const hero = $("hero");
+  hero.className = "card hero";
+  const days = c.daysLeft + (c.daysLeft === 1 ? " day" : " days");
+  if (c.income === 0) {
+    $("heroMsg").textContent = "Add your income below to get started 👇";
+  } else if (c.left < 0) {
+    hero.classList.add("bad");
+    $("heroMsg").textContent = `You're ${money(-c.left)} over budget this month. It happens! Try to pause spending where you can.`;
+  } else if (c.perDay < 10) {
+    hero.classList.add("warn");
+    $("heroMsg").textContent = `per day for the next ${days}. It's a tight one, so you've got this! 💪`;
+  } else {
+    $("heroMsg").textContent = `per day for the next ${days}. Nice and comfortable 🙌`;
+  }
+
+  // Lists
+  fillList($("incomeList"),
+    data.income.map(i => row(i.type, "", i.amount, () => remove("income", i.id))),
+    "No income added yet.");
+  if (data.income.length) $("incomeList").appendChild(totalRow("Total income", c.income));
+
+  fillList($("fixedList"),
+    data.fixed.map(i => row(i.name, "", i.amount, () => remove("fixed", i.id))),
+    "No fixed expenses yet.");
+  if (data.fixed.length) $("fixedList").appendChild(totalRow("Total fixed", c.fixed));
+
+  const recent = [...c.monthSpending].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  fillList($("spendList"),
+    recent.map(s => row(s.category + (s.note ? " · " + s.note : ""), s.date, s.amount, () => remove("spending", s.id))),
+    "Nothing logged this month yet.");
+  if (recent.length) $("spendList").appendChild(totalRow("Spent this month", c.spent));
+
+  renderChart(c.monthSpending, c.spent);
+
+  // New-month notice: saved spending exists, but none of it is from this month
+  $("newMonthBanner").hidden = !(data.spending.length && !c.monthSpending.length &&
+                                 data.spending.every(s => !s.date.startsWith(c.thisMonth)));
+}
+
+function renderChart(items, total) {
+  const area = $("chartArea");
+  area.replaceChildren();
+  if (!total) {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = "Log some spending and your chart will appear here.";
+    area.appendChild(p);
+    return;
+  }
+  // Add up spending per category (skipping categories with $0)
+  const parts = CATEGORIES
+    .map(cat => ({ ...cat, total: sum(items.filter(s => s.category === cat.name)) }))
+    .filter(p => p.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  // A donut is just a circle with a "conic-gradient" background, split into colored slices.
+  let angle = 0;
+  const stops = parts.map(p => {
+    const start = angle;
+    angle += (p.total / total) * 360;
+    return `${p.color} ${start}deg ${angle}deg`;
+  });
+
+  const wrap = document.createElement("div");
+  wrap.className = "chart";
+  const donut = document.createElement("div");
+  donut.className = "donut";
+  donut.style.background = `conic-gradient(${stops.join(",")})`;
+  donut.setAttribute("role", "img");
+  donut.setAttribute("aria-label", "Spending by category: " +
+    parts.map(p => `${p.name} ${money(p.total)}`).join(", "));
+  const mid = document.createElement("div");
+  mid.className = "donut-mid";
+  mid.innerHTML = "<div><span></span><small>spent</small></div>";
+  mid.querySelector("span").textContent = money(total);
+  donut.appendChild(mid);
+
+  const legend = document.createElement("ul");
+  legend.className = "legend";
+  parts.forEach(p => {
+    const li = document.createElement("li");
+    const dot = document.createElement("i");
+    dot.style.background = p.color;
+    const nm = document.createElement("span");
+    nm.textContent = p.name;
+    const val = document.createElement("b");
+    val.textContent = `${money(p.total)} (${Math.round(p.total / total * 100)}%)`;
+    li.append(dot, nm, val);
+    legend.appendChild(li);
+  });
+  wrap.append(donut, legend);
+  area.appendChild(wrap);
+}
+
+// ---- 6. Reacting to the user ----
+function remove(listName, id) {
+  data[listName] = data[listName].filter(x => x.id !== id);
+  save(); render();
+}
+function readAmount(inputEl) {
+  const n = parseFloat(inputEl.value);
+  return Number.isFinite(n) && n > 0 && n < 1e9 ? Math.round(n * 100) / 100 : null;
+}
+
+$("incomeForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const amount = readAmount($("incAmt"));
+  if (amount === null) return;
+  data.income.push({ id: newId(), type: $("incType").value, amount });
+  $("incAmt").value = "";
+  save(); render();
+});
+
+$("fixedForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const amount = readAmount($("fixAmt"));
+  const name = $("fixName").value.trim();
+  if (amount === null || !name) return;
+  data.fixed.push({ id: newId(), name, amount });
+  $("fixName").value = ""; $("fixAmt").value = "";
+  save(); render();
+});
+
+$("spendForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const amount = readAmount($("spAmt"));
+  if (amount === null || !$("spDate").value) return;
+  data.spending.push({
+    id: newId(), category: $("spCat").value, amount,
+    date: $("spDate").value, note: $("spNote").value.trim()
+  });
+  $("spAmt").value = ""; $("spNote").value = "";
+  save(); render();
+});
+
+$("resetBtn").addEventListener("click", () => {
+  if (confirm("Reset the month? This deletes all logged spending. Your income and fixed expenses stay.")) {
+    data.spending = [];
+    save(); render();
+  }
+});
+
+// ---- 7. Start-up ----
+CATEGORIES.forEach(c => {
+  const o = document.createElement("option");
+  o.textContent = c.name;
+  $("spCat").appendChild(o);
+});
+const today = new Date();
+$("spDate").value = dateStr(today);
+$("spDate").min = dateStr(new Date(today.getFullYear(), today.getMonth(), 1));
+$("spDate").max = dateStr(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+render();
+</script>
+</body>
+</html>
